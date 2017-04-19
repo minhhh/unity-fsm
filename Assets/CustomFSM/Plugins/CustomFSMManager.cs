@@ -13,9 +13,9 @@ public class CustomFSMManager : MonoBehaviour
     public float currentStateTime = 0;
     public bool autoUpdate;
 
-    private Dictionary<Enum, Action<Enum, Dictionary<string, object>>> enterLookup = new Dictionary<Enum, Action<Enum, Dictionary<string, object>>> ();
-    private Dictionary<Enum, Action<Enum, Dictionary<string, object>>> exitLookup = new Dictionary<Enum, Action<Enum, Dictionary<string, object>>> ();
-    private Dictionary<Enum, Func<float, bool>> updateLookup = new Dictionary<Enum, Func<float, bool>> ();
+    private Dictionary<int, Action<Enum, Dictionary<string, object>>> enterLookup = new Dictionary<int, Action<Enum, Dictionary<string, object>>> ();
+    private Dictionary<int, Action<Enum, Dictionary<string, object>>> exitLookup = new Dictionary<int, Action<Enum, Dictionary<string, object>>> ();
+    private Dictionary<int, Func<float, bool>> updateLookup = new Dictionary<int, Func<float, bool>> ();
 
     public Action<float> StateMachineUpdate = NoopUpdate;
     bool stopUpdate = false;
@@ -37,31 +37,32 @@ public class CustomFSMManager : MonoBehaviour
         object f;
 
         foreach (var value in values) {
+            int intValue = (int)((object)value);
             methodName = String.Format ("StateMachineEnter_{0}", value.ToString ());
             f = CreateDelegate (typeof(Action<Enum, Dictionary<string, object>>), comp, methodName) as Action<Enum, Dictionary<string, object>>;
 
             if (f != null) {
-                enterLookup [(Enum)value] = f as Action<Enum, Dictionary<string, object>>;
+                enterLookup [intValue] = f as Action<Enum, Dictionary<string, object>>;
             } else {
-                enterLookup [(Enum)value] = Noop;
+                enterLookup [intValue] = Noop;
             }
 
             methodName = String.Format ("StateMachineExit_{0}", value.ToString ());
             f = CreateDelegate (typeof(Action<Enum, Dictionary<string, object>>), comp, methodName) as Action<Enum, Dictionary<string, object>>;
 
             if (f != null) {
-                exitLookup [(Enum)value] = f as Action<Enum, Dictionary<string, object>>;
+                exitLookup [intValue] = f as Action<Enum, Dictionary<string, object>>;
             } else {
-                exitLookup [(Enum)value] = Noop;
+                exitLookup [intValue] = Noop;
             }
 
             methodName = String.Format ("StateMachineUpdate_{0}", value.ToString ());
             f = CreateDelegate (typeof(Func<float, bool>), comp, methodName) as Func<float, bool>;
 
             if (f != null) {
-                updateLookup [(Enum)value] = f as Func<float, bool>;
+                updateLookup [intValue] = f as Func<float, bool>;
             } else {
-                updateLookup [(Enum)value] = Noop;
+                updateLookup [intValue] = Noop;
             }
         }
 
@@ -132,12 +133,12 @@ public class CustomFSMManager : MonoBehaviour
         this._state = state;
         this.state = (int)((object)this._state);
         this.currentStateTime = 0;
-        enterLookup [state] (oldState, options);
+        enterLookup [this.state] (oldState, options);
     }
 
     void StateMachineExit (Enum state, Dictionary<string, object> options = null)
     {
-        exitLookup [_state] (state, options);
+        exitLookup [this.state] (state, options);
     }
 
     public void Update ()
@@ -158,7 +159,7 @@ public class CustomFSMManager : MonoBehaviour
 
     void _StateMachineUpdate (float deltaTime)
     {
-        if (updateLookup [_state] (deltaTime)) {
+        if (updateLookup [this.state] (deltaTime)) {
             return;
         }
 

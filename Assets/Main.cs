@@ -24,7 +24,7 @@ public class Main : MonoBehaviour
         // Enter Loop from Start
         // Exit Loop to End
         // Enter End from Loop
-        // Exit End to Start
+
     }
 
     void StateMachineExit_Start(Enum state, Dictionary<string, object> options = null)
@@ -46,12 +46,12 @@ public class Main : MonoBehaviour
     void StateMachineEnter_End(Enum state, Dictionary<string, object> options = null)
     {
         Debug.Log("Enter End from " + state);
-        customFSMManager.StateMachineChange(MyState.Start);
     }
 
-    void StateMachineExit_End(Enum state, Dictionary<string, object> options = null)
+    bool StateMachineUpdate_End(float deltaTime)
     {
-        Debug.Log("Exit End to " + state);
+        Debug.Log("Update end");
+        return false;
     }
 
 }
