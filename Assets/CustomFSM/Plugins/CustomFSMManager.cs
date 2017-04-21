@@ -19,6 +19,7 @@ public class CustomFSMManager : MonoBehaviour
 
     public Action<float> StateMachineUpdate = NoopUpdate;
     bool stopUpdate = false;
+    Type enumType;
 
     /**
       Initialize this class with the custom enum.
@@ -27,17 +28,35 @@ public class CustomFSMManager : MonoBehaviour
     public void Initialize (Type T, object comp, bool autoUpdate = true)
     {
         this.comp = comp;
+        this.enumType = T;
         this.autoUpdate = autoUpdate;
 
         var values = Enum.GetValues (T);
         this._state = (Enum)values.GetValue (0);
         this.state = (int)((object)this._state);
 
+        CreateAllDelegates ();
+
+        if (!autoUpdate) {
+            StateMachineUpdate = _StateMachineUpdate;
+        } else {
+            StateMachineUpdate = NoopUpdate;
+        }
+    }
+
+    void CreateAllDelegates ()
+    {
+        var values = Enum.GetValues (enumType);
         string methodName;
         object f;
 
+        enterLookup.Clear ();
+        exitLookup.Clear ();
+        updateLookup.Clear ();
+
         foreach (var value in values) {
-            int intValue = (int)((object)value);
+            var intValue = (int)((object)value);
+
             methodName = String.Format ("StateMachineEnter_{0}", value.ToString ());
             f = CreateDelegate (typeof(Action<Enum, Dictionary<string, object>>), comp, methodName) as Action<Enum, Dictionary<string, object>>;
 
@@ -64,12 +83,6 @@ public class CustomFSMManager : MonoBehaviour
             } else {
                 updateLookup [intValue] = Noop;
             }
-        }
-
-        if (!autoUpdate) {
-            StateMachineUpdate = _StateMachineUpdate;
-        } else {
-            StateMachineUpdate = NoopUpdate;
         }
     }
 
@@ -159,6 +172,11 @@ public class CustomFSMManager : MonoBehaviour
 
     void _StateMachineUpdate (float deltaTime)
     {
+        if (!updateLookup.ContainsKey (this.state)) {
+            // For some reason, the delegates were destroyed
+            CreateAllDelegates ();
+        }
+
         if (updateLookup [this.state] (deltaTime)) {
             return;
         }
