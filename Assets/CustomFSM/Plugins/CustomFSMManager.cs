@@ -7,7 +7,7 @@ using System.Reflection;
 public class CustomFSMManager : MonoBehaviour
 {
     public string fsmName;
-    public object comp;
+    object comp;
     private Enum _state;
     public int state;
     public float currentStateTime = 0;
@@ -17,36 +17,29 @@ public class CustomFSMManager : MonoBehaviour
     private Dictionary<int, Action<Enum, Dictionary<string, object>>> exitLookup = new Dictionary<int, Action<Enum, Dictionary<string, object>>> ();
     private Dictionary<int, Func<float, bool>> updateLookup = new Dictionary<int, Func<float, bool>> ();
 
-    public Action<float> StateMachineUpdate = NoopUpdate;
     bool stopUpdate = false;
-    Type enumType;
+    string enumTypeName;
 
     /**
-      Initialize this class with the custom enum.
+     * Initialize this class with the custom enum.
      * The first enum is the default state
      **/
     public void Initialize (Type T, object comp, bool autoUpdate = true)
     {
         this.comp = comp;
-        this.enumType = T;
+        this.enumTypeName = T.FullName;
         this.autoUpdate = autoUpdate;
 
         var values = Enum.GetValues (T);
         this._state = (Enum)values.GetValue (0);
-        this.state = (int)((object)this._state);
+        this.state = 0;
 
         CreateAllDelegates ();
-
-        if (!autoUpdate) {
-            StateMachineUpdate = _StateMachineUpdate;
-        } else {
-            StateMachineUpdate = NoopUpdate;
-        }
     }
 
     void CreateAllDelegates ()
     {
-        var values = Enum.GetValues (enumType);
+        var values = Enum.GetValues (Type.GetType (enumTypeName));
         string methodName;
         object f;
 
@@ -58,7 +51,7 @@ public class CustomFSMManager : MonoBehaviour
             var intValue = (int)((object)value);
 
             methodName = String.Format ("StateMachineEnter_{0}", value.ToString ());
-            f = CreateDelegate (typeof(Action<Enum, Dictionary<string, object>>), comp, methodName) as Action<Enum, Dictionary<string, object>>;
+            f = CreateDelegate<Action<Enum, Dictionary<string, object>>> (comp, methodName);
 
             if (f != null) {
                 enterLookup [intValue] = f as Action<Enum, Dictionary<string, object>>;
@@ -67,7 +60,7 @@ public class CustomFSMManager : MonoBehaviour
             }
 
             methodName = String.Format ("StateMachineExit_{0}", value.ToString ());
-            f = CreateDelegate (typeof(Action<Enum, Dictionary<string, object>>), comp, methodName) as Action<Enum, Dictionary<string, object>>;
+            f = CreateDelegate<Action<Enum, Dictionary<string, object>>> (comp, methodName);
 
             if (f != null) {
                 exitLookup [intValue] = f as Action<Enum, Dictionary<string, object>>;
@@ -76,7 +69,7 @@ public class CustomFSMManager : MonoBehaviour
             }
 
             methodName = String.Format ("StateMachineUpdate_{0}", value.ToString ());
-            f = CreateDelegate (typeof(Func<float, bool>), comp, methodName) as Func<float, bool>;
+            f = CreateDelegate <Func<float, bool>> (comp, methodName);
 
             if (f != null) {
                 updateLookup [intValue] = f as Func<float, bool>;
@@ -93,6 +86,21 @@ public class CustomFSMManager : MonoBehaviour
         if (m != null) {
             try {
                 return Delegate.CreateDelegate (T, o, m);
+            } catch (Exception e) {
+                Debug.LogError ("CustomFSMManager::CreateDelegate method not compatible " + methodName + " " + e.StackTrace);
+            }
+        }
+
+        return null;
+    }
+
+    public static T CreateDelegate <T> (object o, string methodName) where T : class
+    {
+        MethodInfo m = GetMethodRecursive (o, methodName);
+
+        if (m != null) {
+            try {
+                return Delegate.CreateDelegate (typeof(T), o, m) as T;
             } catch (Exception e) {
                 Debug.LogError ("CustomFSMManager::CreateDelegate method not compatible " + methodName + " " + e.StackTrace);
             }
@@ -128,14 +136,10 @@ public class CustomFSMManager : MonoBehaviour
         return false;
     }
 
-    public static void NoopUpdate (float t)
-    {
-    }
-
     // Try not to transition to the current state. It's a hack to do that
     public void StateMachineChange (Enum state, Dictionary<string, object> options = null)
     {
-//        Debug.LogFormat ("{0}::StateMachineChange {1}", comp.GetType ().Name, state);
+        //        Debug.LogFormat ("{0}::StateMachineChange {1}", comp.GetType ().Name, state);
         StateMachineExit (state, options);
         StateMachineEnter (state, options);
     }
@@ -168,6 +172,13 @@ public class CustomFSMManager : MonoBehaviour
     public void SetStopUpdate (bool stopUpdate)
     {
         this.stopUpdate = stopUpdate;
+    }
+
+    public void StateMachineUpdate (float deltaTime)
+    {
+        if (!autoUpdate) {
+            _StateMachineUpdate (deltaTime);
+        }
     }
 
     void _StateMachineUpdate (float deltaTime)
