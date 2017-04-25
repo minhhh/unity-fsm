@@ -16,7 +16,7 @@ public class Main : MonoBehaviour
     void Start ()
     {
         customFSMManager = gameObject.AddComponent<CustomFSMManager>();
-        customFSMManager.Initialize(typeof(MyState), this);
+        customFSMManager.Initialize(typeof(MyState), this.GetType ());
 
         customFSMManager.StateMachineChange(MyState.Loop);
         // Should print

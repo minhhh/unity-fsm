@@ -1,6 +1,6 @@
 {
   "name": "CustomFSM",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "CustomFSMManager is a Component that facilitates your custom FSM",
   "main": "index.js",
   "files": [
