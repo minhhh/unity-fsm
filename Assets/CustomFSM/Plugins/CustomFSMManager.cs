@@ -7,7 +7,6 @@ using System.Reflection;
 public class CustomFSMManager : MonoBehaviour
 {
     public string fsmName;
-    object comp;
     private Enum _state;
     public int state;
     public float currentStateTime = 0;
@@ -19,18 +18,19 @@ public class CustomFSMManager : MonoBehaviour
 
     bool stopUpdate = false;
     string enumTypeName;
+    string componentName;
 
     /**
      * Initialize this class with the custom enum.
      * The first enum is the default state
      **/
-    public void Initialize (Type T, object comp, bool autoUpdate = true)
+    public void Initialize (Type stateType, Type comp, bool autoUpdate = true)
     {
-        this.comp = comp;
-        this.enumTypeName = T.FullName;
+        this.componentName = comp.FullName;
+        this.enumTypeName = stateType.FullName;
         this.autoUpdate = autoUpdate;
 
-        var values = Enum.GetValues (T);
+        var values = Enum.GetValues (stateType);
         this._state = (Enum)values.GetValue (0);
         this.state = 0;
 
@@ -40,6 +40,7 @@ public class CustomFSMManager : MonoBehaviour
     void CreateAllDelegates ()
     {
         var values = Enum.GetValues (Type.GetType (enumTypeName));
+        var comp = this.GetComponent (Type.GetType(componentName));
         string methodName;
         object f;
 
